@@ -1,2 +1,2 @@
-pqh-updater/node_modules
-pqh-updater/extract
+**/node_modules
+**/extract
