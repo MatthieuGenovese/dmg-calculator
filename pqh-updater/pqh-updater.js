@@ -1,270 +1,290 @@
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const { exec } = require('child_process');
 const sqlite3 = require('sqlite3').verbose();
-const { open } = require('sqlite');
-const readline = require('readline');
-const webp = require('webp-converter');
-const fse = require('fs-extra');
+var Unit = require('./models/unit.model.js');
+var Equipment = require('./models/equipment.model.js');
+var unitArrayIds = new Array();
+var unitArrayNames = new Array();
+var mapUnitGear = new Map();
+var gearMap = new Map();
+var fullUnitMap = new Map();
+var equipmentArray = new Array();
+var growthMap = new Map();
+var unitBondMap = new Map();
 
-const python_tools = require('./python-tools/python-tools');
-const config = require('./config.json');
 
-const equipment_dictionary = config["equipment_dictionary"];
-const quest_dictionary = config["quest_dictionary"];
-const database_dir = config["database"]["directory"];
-const extract_dir = config["database"]["download_directory"];
-const css_path = path.join(config["system"]["output_directory"], 'css', 'data.css');
 
 run();
-
 function run() {
-    /*update_database().then(() =>{
-        extract_images2();
-    });*/
-    /*update_database().then(() => {
-        console.log('SUCCESSFULLY UPDATED DATABASE');
-        setup_files();
-    });*/
+    var db  = open_database();
+    calc_values(db).then(() => {
+        console.log(fullUnitMap);
+    })
 }
 
 
-function extract_images2() {
-
-        // OPEN (LATEST CREATED) EQUIPMENT DATA AND TRANSLATE ME DOCUMENT
-        const manifest_path = path.join(database_dir, 'manifest'),
-        manifest = fs.readFileSync(manifest_path, 'utf8');
-        let manifestArray = manifest.split('\n');
-
-    return new Promise(async (resolve) => {
-        const directory = config["database"]["download_directory"],
-            encrypted_dir = path.join(directory, 'encrypted'),
-            decrypted_dir = path.join(directory, 'decrypted');
-
-        // CREATE DIRECTORIES
-        if (!fs.existsSync(directory)) {
-            fs.mkdirSync(directory);
-        }
-        if (!fs.existsSync(encrypted_dir)) {
-            fs.mkdirSync(encrypted_dir);
-        }
-        if (!fs.existsSync(decrypted_dir)) {
-            fs.mkdirSync(decrypted_dir);
-        }
-
-        // FIND FILE HASH FROM MANIFEST
-        let files = {};
-        manifestArray.forEach((file_name) => {
-            const file_index = manifest.indexOf(file_name),
-                line_end = manifest.indexOf('\n', file_index),
-                file_data = manifest.substring(file_index, line_end).split(',');
-                //a/all_battleunit_109001.unity3d,f04a7b54abd5960b28f4a4e9efeecc2f,tutorial1,675783,
-            files[file_name] = {
-                "hash": file_data[1],
-                "encrypted_path": path.join('.', extract_dir, 'encrypted', file_name + '.unity3d')
-            };
-        });
-
-        // DOWNLOAD ENCRYPTED .unity3d FILES FROM CDN
-        for (const file_name in files) {
-            let fileNameFiltered = file_name.split(',')[0].substring(2,file_name.split(',')[0].length);
-            await get_asset(fileNameFiltered, files[file_name]["hash"]);
-            console.log('DOWNLOADED', fileNameFiltered , '; SAVED AS', fileNameFiltered);
-            //await python_tools.deserialize(files[file_name]["encrypted_path"], files[file_name]["decrypted_path"]);
-        }
-
-        resolve(files);
-    });
-
-    function get_asset(output_path, hash) {
-        return new Promise(async function(resolve) {
-          //  const outPathfiltered = output_path.split(',')[0].substring(2,output_path.split(',')[1].length)
-            const file = fs.createWriteStream(path.join('.', extract_dir, 'encrypted', output_path));
-            http.get('http://prd-priconne-redive.akamaized.net/dl/pool/AssetBundles/' + hash.substr(0, 2) + '/' + hash, function(response) {
-                const stream = response.pipe(file);
-                stream.on('finish', () => {
-                    resolve();
-                });
-            });
-        });
-    }
-}
-
-
-function download_manifest2() {
-    return new Promise(async function(resolve) {
-        let bundle = '';
-        let current_version;
-        const version_file = path.join(database_dir, 'version');
-        const json = JSON.parse(fs.readFileSync(version_file, 'utf8'));
-        current_version = {
-            truth_version: json['truth_version'],
-            hash: json['hash'],
-        };
-        let truth_version = parseInt(current_version['truth_version']);
-        http.request({
-            host: 'prd-priconne-redive.akamaized.net',
-            path: '/dl/Resources/' + truth_version + '/Jpn/AssetBundles/Windows/manifest/icon_assetmanifest',
-            method: 'GET',
-        }, (res) => {
-            res.on('data', function(chunk) {
-                bundle += Buffer.from(chunk).toString();
-            });
-            res.on('end', () => {
-                bundle += '\n';
-                //all_manifest
-                http.request({
-                    host: 'prd-priconne-redive.akamaized.net',
-                    path: '/dl/Resources/' + truth_version + '/Jpn/AssetBundles/Windows/manifest/unit_assetmanifest',
-                    method: 'GET',
-                }, (res) => {
-                    res.on('data', function(chunk) {
-                        bundle += Buffer.from(chunk).toString();
+function calc_values(db){
+    return new Promise((resolve, reject) => {
+        build_arrays_and_map(db).then(() =>{
+            for(let i =0; i< unitArrayIds.length; i++){
+                let name = unitArrayNames[i];
+                let id = unitArrayIds[i];
+                let currentUnit = new Unit(id,name,0,0,0,0);
+                currentUnit.pushGrowthStats(growthMap.get(id));
+                if(mapUnitGear.get(id) !== undefined){
+                    let rank = 1;
+                    mapUnitGear.get(id).forEach(promoteLevel =>{
+                        let gearArray = new Array();
+                        promoteLevel.forEach(gear =>{
+                            if(gearMap.get(gear) !== undefined){
+                                gearArray.push(gearMap.get(gear))                            
+                            }
+                        })
+                        currentUnit.pushRankStats(rank, gearArray);
+                        rank++;
+                        gearArray = new Array();
                     });
-                    res.on('end',() => {
-                        bundle += '\n';
-                        http.request({
-                            host: 'prd-priconne-redive.akamaized.net',
-                            path: '/dl/Resources/' + truth_version + '/Jpn/AssetBundles/Windows/manifest/all_assetmanifest',
-                            method: 'GET',
-                        }, (res) => {
-                            res.on('data', function(chunk) {
-                                bundle += Buffer.from(chunk).toString();
-                            });
-                            res.on('end', () => {
-                                const manifest_path = path.join(database_dir, 'manifest');
-                                fs.writeFile(manifest_path, bundle, function (err) {
-                                    if (err) throw err;
-                                    console.log('DOWNLOADED ICON/UNIT MANIFEST ; SAVED AS', manifest_path);
-                                    resolve();
-                                });
-                            });
-                        }).end();
-                    });
-                }).end();
-            });
-        }).end();
-    });
-}
-
-function update_database() {
-    return new Promise(async function(resolve) {
-        // CHECK IF DATABASE DIRECTORY EXISTS
-        if (!fs.existsSync(database_dir)) {
-            fs.mkdirSync(database_dir);
-        }
-
-        // READ CURRENT DATABASE VERSION
-        let current_version;
-        const version_file = path.join(database_dir, 'version');
-        if (fs.existsSync(version_file)) {
-            // DATABASE VERSION FILE EXISTS
-            const json = JSON.parse(fs.readFileSync(version_file, 'utf8'));
-            current_version = {
-                truth_version: json['truth_version'],
-                hash: json['hash'],
-            };
-            console.log('EXISTING VERSION FILE FOUND: CURRENT TRUTH VERSION =', current_version['truth_version']);
-        }
-        else {
-            // DATABASE VERSION FILE DOES NOT EXIST, START FROM SCRATCH
-            current_version = {
-                truth_version: config["database"]["default_truth_version"],
-                hash: ''
-            };
-            console.log('VERSION FILE NOT FOUND. USING TRUTH VERSION', current_version['truth_version']);
-        }
-
-        console.log('CHECKING FOR DATABASE UPDATES...');
-        let truth_version = parseInt(current_version['truth_version']);
-        (async () => {
-            function request(guess) {
-                return new Promise((resolve) => {
-                    http.request({
-                        host: 'prd-priconne-redive.akamaized.net',
-                        path: '/dl/Resources/' + guess + '/Jpn/AssetBundles/iOS/manifest/manifest_assetmanifest',
-                        method: 'GET',
-                    }, (res) => {
-                        resolve(res);
-                    }).end();
-                });
-            }
-
-            // FIND NEW TRUTH VERSION
-            const max_test = config["database"]["max_test_amount"];
-            const test_multiplier = config["database"]["test_multiplier"];
-            for (let i = 1 ; i <= max_test ; i++) {
-                const guess = truth_version + (i * test_multiplier);
-                console.log('[GUESS]'.padEnd(10), guess);
-                const res = await request(guess);
-                if (res.statusCode === 200) {
-                    console.log('[SUCCESS]'.padEnd(10), guess, ' RETURNED STATUS CODE 200 (VALID TRUTH VERSION)');
-
-                    // RESET LOOP
-                    truth_version = guess;
-                    i = 0;
                 }
+                unitBondMap.get(currentUnit.getId()).forEach(element =>{
+                    currentUnit.setPatk(currentUnit.getPatk() + element[0]);
+                    currentUnit.setMatk(currentUnit.getMatk() + element[1]);
+                    currentUnit.setPcrit(currentUnit.getPcrit() + element[2]);
+                    currentUnit.setMcrit(currentUnit.getMcrit() + element[3]);
+                })
+                fullUnitMap.set(currentUnit.getId(),currentUnit); 
             }
-        })().then(() => {
-            console.log('VERSION CHECK COMPLETE ; LATEST TRUTH VERSION =', truth_version);
-
-            // CHECK IF LATEST TRUTH VERSION IS DIFFERENT FROM CURRENT
-            if (truth_version === current_version['truth_version']) {
-                console.log('NO UPDATE FOUND, MUST BE ON THE LATEST VERSION!');
-            }
-
-            let bundle = '';
-            http.request({
-                host: 'prd-priconne-redive.akamaized.net',
-                path: '/dl/Resources/' + truth_version + '/Jpn/AssetBundles/Windows/manifest/masterdata_assetmanifest',
-                method: 'GET',
-            }, (res) => {
-                res.on('data', function(chunk) {
-                    bundle += Buffer.from(chunk).toString();
-                });
-                res.on('end', () => {
-                    const b = bundle.split(',');
-                    const hash = b[1];
-
-                    // UPDATE VERSION FILE
-                    current_version = {
-                        truth_version: truth_version,
-                        hash: hash,
-                    };
-                    fs.writeFile(version_file, JSON.stringify(current_version), function (err) {
-                        if (err) throw err;
-                    });
-
-                    // DOWNLOAD FILES
-                    download_CDB(hash).then(() => {
-                        download_manifest2().then(() => {
-                            // DATABASE UPDATE COMPLETE
-                            resolve();
-                        });
-                    });
-                });
-            }).end();
+            resolve();
         });
-
-        function download_CDB(hash) {
-            return new Promise(async function(resolve) {
-                const cdb_path = path.join(database_dir, 'master.cdb');
-                const db_path = path.join(database_dir, 'master.db');
-                const file = fs.createWriteStream(cdb_path);
-                http.get('http://prd-priconne-redive.akamaized.net/dl/pool/AssetBundles/' + hash.substr(0, 2) + '/' + hash, function(response) {
-                    const stream = response.pipe(file);
-                    stream.on('finish', () => {
-                        // CONVERT CDB TO MDB/DB
-                        exec('Coneshell_call.exe -cdb ' + cdb_path + ' ' + db_path, (error, stdout, stderr) => {
-                            if (error) throw error;
-                            if (stderr) throw stderr;
-                            console.log('DOWNLOADED AND CONVERTED DATABASE [' + hash + '] ; SAVED AS ' + db_path);
-                            resolve();
-                        });
-                    });
-                });
-            });
-        }
     });
 }
+
+function build_arrays_and_map(db){
+    return new Promise((resolve, reject) => {
+        extract_character(db).then((results) => {
+            results.forEach(element => {
+                unitArrayIds.push(element.id);
+                unitArrayNames.push(element.name);
+            });
+        }).then(() => {
+            build_unit_gear_map(db).then((results) => {
+                let tmpUnitArray = new Array();
+                results.forEach(element => {
+                    let tmpGearArray = new Array();                    
+                    tmpGearArray.push(element.slot1);
+                    tmpGearArray.push(element.slot2);
+                    tmpGearArray.push(element.slot3);
+                    tmpGearArray.push(element.slot4);
+                    tmpGearArray.push(element.slot5);
+                    tmpGearArray.push(element.slot6);
+                    tmpUnitArray.push(tmpGearArray);
+                    if(tmpUnitArray.length == 15){
+                        mapUnitGear.set(element.id, tmpUnitArray);
+                        tmpUnitArray = new Array();
+                    }                   
+                });
+            });  
+        }).then(() =>{
+            extract_gear_value(db).then((results) => {
+                results.forEach(element => {
+                    let currentEquipment = new Equipment(element.id, element.name, element.matk, element.patk, element.mcrit, element.pcrit);
+                    currentEquipment.setEnhanceMcrit(element.enhancemcrit);
+                    currentEquipment.setEnhancePcrit(element.enhancepcrit);
+                    currentEquipment.setEnhancePatk(element.enhancepatk);
+                    currentEquipment.setEnhanceMatk(element.enhancematk);
+                    equipmentArray.push(currentEquipment);
+                    gearMap.set(element.id, currentEquipment);
+                });
+            });
+        }).then(() => {
+            extract_growth_value(db).then((results) =>{
+                let tmpArray = new Array();
+                for(let i =0; i < results.length; i++){
+                    let tmpArray2 = new Array();
+                    tmpArray2.push(results[i].rarity);
+                    tmpArray2.push(results[i].patkgrowth);
+                    tmpArray2.push(results[i].matkgrowth);
+                    tmpArray.push(tmpArray2);
+                    if(results[i].rarity === 5 && i<=results.length-2 && results[i+1].rarity !== 6){
+                        growthMap.set(results[i].id,tmpArray);
+                        tmpArray = new Array();
+                    }
+                    else if(results[i].rarity === 6 ){
+                        growthMap.set(results[i].id,tmpArray);
+                        tmpArray = new Array();
+                    }
+                    else if (i == results.length -1){
+                        growthMap.set(results[i].id,tmpArray);
+                        tmpArray = new Array();
+                    }
+                }
+            })
+        }).then(()=>{
+            extract_bond_value(db).then((results) =>{
+                let tmpArray2 = new Array();
+                let currentId = 0;
+                for(let i =0; i < results.length; i++){
+                    let tmpArray = new Array();
+                    if(currentId !== 0 && currentId !== results[i].id){                       
+                        unitBondMap.set(currentId,tmpArray2);
+                        tmpArray2 = new Array();
+                    }
+                    if(results[i].st1 === 2){
+                        tmpArray.push(results[i].sr1);
+                        tmpArray.push(0);
+                    }
+                    else if(results[i].st1 === 4){
+                        tmpArray.push(0);
+                        tmpArray.push(results[i].sr1);
+                    }
+                    else{
+                        tmpArray.push(0);
+                        tmpArray.push(0);
+                    }
+                    if(results[i].st2 === 6){
+                        tmpArray.push(results[i].sr2);
+                        tmpArray.push(0);
+                    }
+                    else if(results[i].st2 === 7){
+                        tmpArray.push(0);
+                        tmpArray.push(results[i].sr2);
+                    }
+                    else{
+                        tmpArray.push(0);
+                        tmpArray.push(0);
+                    }
+                    if(results[i].st3 === 6){
+                        tmpArray[2] = results[i].sr3;
+                    }
+                    if(results[i].st3 === 7){
+                        tmpArray[3] = results[i].sr3;
+                    }
+                    tmpArray2.push(tmpArray);
+                    if(i === results.length-1){
+                        unitBondMap.set(currentId,tmpArray2);
+                        tmpArray2 = new Array();
+                    }
+                    currentId = results[i].id;
+                }
+                resolve();
+            })
+        })
+    });
+}
+
+function extract_gear_value(db){
+    return new Promise((resolve, reject) => {
+        db.all(`SELECT equipment_data.equipment_id as id,
+            equipment_data.equipment_name as name,
+            equipment_data.atk as patk,
+            equipment_data.magic_str as matk,
+            equipment_data.physical_critical as pcrit,
+            equipment_data.magic_critical as mcrit,
+            equipment_enhance_rate.magic_str as enhancematk,
+            equipment_enhance_rate.atk as enhancepatk,
+            equipment_enhance_rate.magic_critical as enhancemcrit,
+            equipment_enhance_rate.physical_critical as enhancepcrit
+            FROM equipment_data
+            inner join equipment_enhance_rate on equipment_enhance_rate.equipment_id = equipment_data.equipment_id`, (err, row) => {
+            if (err) {
+                return console.error(err.message);
+            }
+            resolve(row);
+        });
+    });
+}
+
+function extract_bond_value(db){
+    return new Promise((resolve, reject) => {
+        db.all(`select chara_to_unit.unit_id_1 as id,
+        chara_story_status.status_type_1 as st1,
+        chara_story_status.status_rate_1 as sr1,
+        chara_story_status.status_type_2 as st2,
+        chara_story_status.status_rate_2 as sr2,
+        chara_story_status.status_type_3 as st3,
+        chara_story_status.status_rate_3 as sr3,
+        chara_story_status.status_type_4 as st4,
+        chara_story_status.status_rate_4 as sr4,
+        chara_story_status.status_type_5 as st5,
+        chara_story_status.status_rate_5 as sr5
+        from chara_to_unit,chara_story_status
+        where chara_story_status.chara_id_1 == chara_to_unit.chara_id 
+        OR chara_story_status.chara_id_2 == chara_to_unit.chara_id 
+        OR chara_story_status.chara_id_3 == chara_to_unit.chara_id
+        OR chara_story_status.chara_id_4 == chara_to_unit.chara_id
+        OR chara_story_status.chara_id_5 == chara_to_unit.chara_id
+        OR chara_story_status.chara_id_6 == chara_to_unit.chara_id
+        OR chara_story_status.chara_id_7 == chara_to_unit.chara_id
+        OR chara_story_status.chara_id_8 == chara_to_unit.chara_id
+        OR chara_story_status.chara_id_9 == chara_to_unit.chara_id
+        OR chara_story_status.chara_id_10 == chara_to_unit.chara_id;`, (err, row) => {
+            if (err) {
+                return console.error(err.message);
+            }
+            resolve(row);
+        });
+    });
+}
+
+function extract_growth_value(db){
+    return new Promise((resolve, reject) => {
+        db.all(`select distinct unit_rarity.unit_id as id,
+		unit_rarity.atk_growth as patkgrowth,
+        unit_rarity.magic_str_growth as matkgrowth,
+        unit_rarity.rarity as rarity
+        from unit_rarity
+        inner JOIN unit_profile ON unit_profile.unit_id = unit_rarity.unit_id
+		INNER JOIN unit_promotion on unit_promotion.unit_id = unit_rarity.unit_id`, (err, row) => {
+            if (err) {
+                return console.error(err.message);
+            }
+            resolve(row);
+        });
+    });
+}
+
+function extract_character(db){
+    return new Promise((resolve, reject) => {
+        db.serialize(function () {
+            db.all(`SELECT distinct unit_data.unit_id as id, unit_data.unit_name as name
+            FROM unit_data
+            INNER JOIN unit_profile ON unit_profile.unit_id = unit_data.unit_id
+            INNER JOIN unit_promotion on unit_promotion.unit_id = unit_data.unit_id`, (err, rows) => {
+                if (err) {
+                    console.error(err.message);
+                }
+                resolve(rows);
+            });
+        });
+    });
+}
+
+function build_unit_gear_map(db){
+    return new Promise((resolve, reject) => {
+        db.all(`SELECT unit_promotion.unit_id as id,
+            unit_promotion.equip_slot_1 as slot1,
+            unit_promotion.equip_slot_2 as slot2,
+            unit_promotion.equip_slot_3 as slot3,
+            unit_promotion.equip_slot_4 as slot4,
+            unit_promotion.equip_slot_5 as slot5,
+            unit_promotion.equip_slot_6 as slot6
+            FROM unit_promotion
+            INNER JOIN unit_profile ON unit_profile.unit_id = unit_promotion.unit_id`, (err, row) => {
+            if (err) {
+                return console.error(err.message);
+            }
+            resolve(row);
+        });
+    });
+}
+function open_database(){
+    var db = new sqlite3.Database('./database/master_en.db', (err) => {
+        if (err) {
+          console.error(err.message);
+        }
+        console.log('Connected to the chinook database.');
+    });
+    return db;
+}
+
+
+
+
+
