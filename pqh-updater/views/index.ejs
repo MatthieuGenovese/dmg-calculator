@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+ </head>
+<body>
+    <h1>Priconne Damage Calculator</h1>
+    <label>Name: </label>
+   <select>
+      <% for (const [key, value] of dropdownVals) { %>
+        <option value="<%= key %>"> <%= value.getName() %> </option>
+    <% } %>
+</select>
+</body>
+</html>
