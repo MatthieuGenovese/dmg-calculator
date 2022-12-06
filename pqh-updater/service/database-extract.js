@@ -12,16 +12,25 @@ var unitBondMap = new Map();
 
 
 
-run();
-function run() {
-    var db  = open_database();
-    calc_values(db).then(() =>{
-        
-    });
-    /*.then(() => {
-        console.log(fullUnitMap);
-    })*/
+
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve,ms));
 }
+function run() {
+    return new Promise((resolve, reject) => {
+        var db  = open_database();
+        calc_values(db).then(() =>{
+            sleep(5000).then(()=> {
+                for(const [key, value] of fullUnitMap){
+                    fullUnitMap.get(key).pushGrowthStats(growthMap.get(key));
+                }
+                resolve();
+            })
+        });
+    });
+}
+
 
 
 function calc_values(db){
@@ -31,7 +40,7 @@ function calc_values(db){
                 let name = unitArrayNames[i];
                 let id = unitArrayIds[i];
                 let currentUnit = new Unit(id,name,0,0,0,0);
-                currentUnit.pushGrowthStats(growthMap.get(id));
+                //currentUnit.pushGrowthStats(growthMap.get(id));
                 if(mapUnitGear.get(id) !== undefined){
                     let rank = 1;
                     mapUnitGear.get(id).forEach(promoteLevel =>{
@@ -52,6 +61,7 @@ function calc_values(db){
                     currentUnit.setPcrit(currentUnit.getPcrit() + element[2]);
                     currentUnit.setMcrit(currentUnit.getMcrit() + element[3]);
                 })
+                //currentUnit.pushGrowthStats(growthMap.get(id));
                 fullUnitMap.set(currentUnit.getId(),currentUnit); 
             }
             resolve();
@@ -167,7 +177,7 @@ function build_arrays_and_map(db){
                     currentId = results[i].id;
                 }
                 resolve();
-            })
+            })     
         })
     });
 }
@@ -249,7 +259,8 @@ function extract_character(db){
             db.all(`SELECT distinct unit_data.unit_id as id, unit_data.unit_name as name
             FROM unit_data
             INNER JOIN unit_profile ON unit_profile.unit_id = unit_data.unit_id
-            INNER JOIN unit_promotion on unit_promotion.unit_id = unit_data.unit_id`, (err, rows) => {
+            INNER JOIN unit_promotion on unit_promotion.unit_id = unit_data.unit_id
+            ORDER BY unit_data.unit_name;`, (err, rows) => {
                 if (err) {
                     console.error(err.message);
                 }
@@ -292,7 +303,8 @@ module.exports = {
     unitNameArray: unitArrayNames,
     mapUnitGear: mapUnitGear,
     fullUnitMap: fullUnitMap,
-    equipmentArray: equipmentArray
+    equipmentArray: equipmentArray,
+    run
 }
 
 

@@ -1,17 +1,126 @@
 <!DOCTYPE html>
-
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <html xmlns="http://www.w3.org/1999/xhtml">
-<head>
+<head>  
     <meta charset="utf-8" />
+    <link rel="stylesheet" href="/css/bootstrap.min.css" />
     <title></title>
  </head>
 <body>
     <h1>Priconne Damage Calculator</h1>
-    <label>Name: </label>
-   <select>
-      <% for (const [key, value] of dropdownVals) { %>
-        <option value="<%= key %>"> <%= value.getName() %> </option>
-    <% } %>
-</select>
+     <div class="container-fluid">
+            <div class="col-md-12">
+                <div class="col-md-4">
+                    <label>Name: </label>
+                    <select class="unitId" name="unitId" id="unitId">
+                        <% for (const [key, value] of dropdownVals) { %>
+                            <option value="<%= key %>"> <%= value.getName() %> </option>
+                        <% } %>
+                        
+                    </select>
+                </div>               
+                <div class="col-md-4">
+                    <label>Level: </label>
+                    <input type="text" id="level" name="level">
+                </div>
+                <div class="col-md-4">
+                    <label class="rank">Rank: </label>
+                    <select class="rank" name="rank" id="rank">
+                        <% for (var i=0; i<rank+1; i++) { %>
+                            <option value="<%=i %>"> <%= i %> </option>
+                        <% } %>
+                        
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-12">
+                <div class="form-check">
+                    <input class="gear form-check-input" type="checkbox" value="" id="gear6" hidden>
+                    <label class="gear gear6 form-check-label" id="gear6label" for="gear6" hidden>
+                      Default checkbox
+                    </label>
+                    <input class="gear form-check-input" type="checkbox" value="" id="gear1" hidden>
+                    <label class="gear gear1 form-check-label" id="gear1label" for="gear1" hidden>
+                      Default checkbox
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="gear form-check-input" type="checkbox" value="" id="gear5" hidden>
+                    <label class="gear gear5 form-check-label" id="gear5label" for="gear5" hidden>
+                      Default checkbox
+                    </label>
+                    <input class="gear form-check-input" type="checkbox" value="" id="gear2" hidden>
+                    <label class="gear gear2 form-check-label" id="gear2label" for="gear2" hidden>
+                      Default checkbox
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="gear form-check-input" type="checkbox" value="" id="gear4" hidden>
+                    <label class="gear gear4 form-check-label" id="gear4label" for="gear4" hidden>
+                      Default checkbox
+                    </label>
+                    <input class="gear form-check-input" type="checkbox" value="" id="gear3" hidden>
+                    <label class="gear gear3 form-check-label" id="gear3label" for="gear3" hidden>
+                      Default checkbox
+                    </label>                 
+                </div>
+            </div>
+            <input id='btn' type='submit'>
+    </div>
 </body>
+<script>
+    $('#btn').click(function(){
+        $.ajax({
+            url: '/unit_id',
+            method: 'POST',
+            dataType: 'application/json',
+            data: {
+                    'id' : document.getElementById('unitId').value,
+                    'rank' : document.getElementById('rank').value,
+                    'level' : document.getElementById('level').value,
+                    'gear1' :  $('#gear1').is(":checked"),
+                    'gear2' :  $('#gear2').is(":checked"),
+                    'gear3' :  $('#gear3').is(":checked"),
+                    'gear4' :  $('#gear4').is(":checked"),
+                    'gear5' :  $('#gear5').is(":checked"),
+                    'gear6' :  $('#gear6').is(":checked"),
+                },
+            success: function(response){
+                console.log(response);
+            }
+        });
+    });
+    /*$('.unitId').change(function(){
+        //console.log('toto');
+        $.ajax({
+            url: '/unit_id',
+            method: 'POST',
+            dataType: 'text',
+            data: {
+                    'id' : document.getElementById('unitId').value,
+                    'rank' : document.getElementById('rank').value,
+                    'level' : document.getElementById('level').value,
+                    'gear1' :  document.getElementById('gear1').value,
+                    'gear2' :  document.getElementById('gear2').value,
+                    'gear3' :  document.getElementById('gear3').value,
+                    'gear4' :  document.getElementById('gear4').value,
+                    'gear5' :  document.getElementById('gear5').value,
+                    'gear6' :  document.getElementById('gear6').value,
+                },
+            success: function(response){
+                console.log(response);
+            }
+        });
+    });*/
+    $('.rank').change(function(){
+        let rankValue = document.getElementById('rank').value;
+        $('.gear').removeAttr('hidden');
+        $('#gear6label').text(rankValue + "-6");
+        $('#gear5label').text(rankValue + "-5");
+        $('#gear4label').text(rankValue + "-4");
+        $('#gear3label').text(rankValue + "-3");
+        $('#gear2label').text(rankValue + "-2");
+        $('#gear1label').text(rankValue + "-1");
+    })
+</script>
 </html>
