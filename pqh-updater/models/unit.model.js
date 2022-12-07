@@ -5,17 +5,13 @@ function Unit(id, name, matk, patk, mcrit, pcrit) {       // Accept name and age
     this.mcrit = mcrit;
     this.pcrit  = pcrit;
     this.name = name;
-    /*this.previousMatk = 0;
-    this.previousPatk = 0;
-    this.previousMcrit = 0;
-    this.previousPcrit = 0;*/
     this.rankStatsMap = new Map();
     this.growthMap = new Map();
 }
 //atk puis matk
 Unit.prototype.pushGrowthStats = function(stats) {
     stats.forEach(element => {
-        this.growthMap.set(element[0], new Array(element[1],element[2])); 
+        this.growthMap.set(''+element[0], new Array(element[1],element[2])); 
     });
 }
 
@@ -73,39 +69,6 @@ Unit.prototype.setMcrit = function(mcrit) {
 }
 
 
-
-/*Unit.prototype.getPreviousMatk = function() {
-    return this.previousMatk;
-}
-
-Unit.prototype.setPreviousMatk = function(previousMatk) {
-    this.previousMatk = previousMatk;
-}
-
-Unit.prototype.getPreviousPatk = function() {
-    return this.previousPatk;
-}
-
-Unit.prototype.setPreviousPatk = function(previousPatk) {
-    this.previousPatk = previousPatk;
-}
-
-Unit.prototype.getPreviousPcrit = function() {
-    return this.previousPcrit;
-}
-
-Unit.prototype.setPreviousPcrit = function(previousPcrit) {
-    this.previousPcrit = previousPcrit;
-}
-
-Unit.prototype.getPreviousMcrit = function() {
-    return this.previousMcrit;
-}
-
-Unit.prototype.setPreviousMcrit = function(previousMcrit) {
-    this.previousMcrit = previousMcrit;
-}*/
-
 Unit.prototype.getName = function() {
     return this.name;
 }
@@ -118,8 +81,19 @@ Unit.prototype.isMage = function() {
     return this.matk>this.patk;
 }
 
-Unit.prototype.calc = function() {
+Unit.prototype.calc = function(level, star, rank, gear1, gear2, gear3, gear4, gear5, gear6) {
     let dmgValue, critValue;
+    this.patk = this.patk + level * this.getGrowthStats(star)[0];
+    this.matk = this.matk + level * this.getGrowthStats(star)[1];
+    for(var i=1; i<=rank; i++){
+        let tmpGearArray = this.getRankStats(i);
+        for(var j =0; j<tmpGearArray.length; j++){
+            this.patk = this.patk + tmpGearArray[j].patk;
+            this.matk = this.matk + tmpGearArray[j].matk;
+            this.mcrit = this.mcrit + tmpGearArray[j].mcrit;
+            this.pcrit = this.pcrit + tmpGearArray[j].pcrit;
+        }
+    }
     if(this.isMage()){
         dmgValue = this.matk;
         critValue = this.mcrit;
@@ -128,7 +102,15 @@ Unit.prototype.calc = function() {
         dmgValue = this.patk;
         critValue = this.pcrit;
     }
-    let critChance = (critValue /15 ) * 0.9625
+    let critChance = (critValue /15 ) * 0.9625;
+    //console.log(this.rankStatsMap);
+    console.log("mcrit " + this.mcrit);
+    console.log("pcrit " +this.pcrit);
+    console.log("matk " + this.matk);
+    console.log("patk " + this.patk);
+    console.log("dmg value " + dmgValue);
+    console.log("crit value " + critValue);
+    console.log("crit chance " + critChance);
     return ((dmgValue * 2 * critChance) + (dmgValue * (100-critChance)));
 }
 

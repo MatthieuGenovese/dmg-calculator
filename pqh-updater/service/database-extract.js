@@ -62,7 +62,7 @@ function calc_values(db){
                     currentUnit.setMcrit(currentUnit.getMcrit() + element[3]);
                 })
                 //currentUnit.pushGrowthStats(growthMap.get(id));
-                fullUnitMap.set(currentUnit.getId(),currentUnit); 
+                fullUnitMap.set(''+currentUnit.getId(),currentUnit); 
             }
             resolve();
         });
@@ -116,15 +116,15 @@ function build_arrays_and_map(db){
                     tmpArray2.push(results[i].matkgrowth);
                     tmpArray.push(tmpArray2);
                     if(results[i].rarity === 5 && i<=results.length-2 && results[i+1].rarity !== 6){
-                        growthMap.set(results[i].id,tmpArray);
+                        growthMap.set(''+results[i].id,tmpArray);
                         tmpArray = new Array();
                     }
                     else if(results[i].rarity === 6 ){
-                        growthMap.set(results[i].id,tmpArray);
+                        growthMap.set(''+results[i].id,tmpArray);
                         tmpArray = new Array();
                     }
                     else if (i == results.length -1){
-                        growthMap.set(results[i].id,tmpArray);
+                        growthMap.set(''+results[i].id,tmpArray);
                         tmpArray = new Array();
                     }
                 }

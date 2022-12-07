@@ -34,6 +34,17 @@
                 </div>
             </div>
             <div class="col-md-12">
+                <div class="col-md-4">
+                    <label class="star">Star: </label>
+                    <select class="star" name="star" id="star">
+                        <% for (var i=0; i<5; i++) { %>
+                            <option value="<%=i+1 %>"> <%= i+1 %> </option>
+                        <% } %>
+                        
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-12">
                 <div class="form-check">
                     <input class="gear form-check-input" type="checkbox" value="" id="gear6" hidden>
                     <label class="gear gear6 form-check-label" id="gear6label" for="gear6" hidden>
@@ -67,17 +78,40 @@
             </div>
             <input id='btn' type='submit'>
     </div>
+    <div id="result">
+
+    </div>
 </body>
 <script>
+    $('.unitId').change(function(){
+        $.ajax({
+            url: '/unit_change',
+            method: 'POST',
+            dataType: 'text',
+            data: {
+                    'id' : document.getElementById('unitId').value              
+                },
+            success: function(response){
+                    let option6 = $('#star').children('option[value="6"]');
+                    if(option6.length === 1 && response === '5'){
+                        $('#star').children('option[value="6"]').remove();
+                    }
+                    else if(option6.length === 0 && response === '6'){
+                        $('#star').append('<option value="6"> 6 </option>');
+                    }
+            }
+        });
+    })
     $('#btn').click(function(){
         $.ajax({
             url: '/unit_id',
             method: 'POST',
-            dataType: 'application/json',
+            dataType: 'text',
             data: {
                     'id' : document.getElementById('unitId').value,
                     'rank' : document.getElementById('rank').value,
                     'level' : document.getElementById('level').value,
+                    'star' : document.getElementById('star').value,
                     'gear1' :  $('#gear1').is(":checked"),
                     'gear2' :  $('#gear2').is(":checked"),
                     'gear3' :  $('#gear3').is(":checked"),
@@ -87,31 +121,10 @@
                 },
             success: function(response){
                 console.log(response);
+                $('#result').text(response);
             }
         });
     });
-    /*$('.unitId').change(function(){
-        //console.log('toto');
-        $.ajax({
-            url: '/unit_id',
-            method: 'POST',
-            dataType: 'text',
-            data: {
-                    'id' : document.getElementById('unitId').value,
-                    'rank' : document.getElementById('rank').value,
-                    'level' : document.getElementById('level').value,
-                    'gear1' :  document.getElementById('gear1').value,
-                    'gear2' :  document.getElementById('gear2').value,
-                    'gear3' :  document.getElementById('gear3').value,
-                    'gear4' :  document.getElementById('gear4').value,
-                    'gear5' :  document.getElementById('gear5').value,
-                    'gear6' :  document.getElementById('gear6').value,
-                },
-            success: function(response){
-                console.log(response);
-            }
-        });
-    });*/
     $('.rank').change(function(){
         let rankValue = document.getElementById('rank').value;
         $('.gear').removeAttr('hidden');
