@@ -8,13 +8,11 @@ const port = process.env.port || 5000;
 const app = express();
 var bootstrapService = require("express-bootstrap-service");
 var data = require('./service/database-extract');
-const { fullUnitMap } = require('./service/database-extract');
 const Unit = require('./models/unit.model');
 var router = express.Router();
 var maxRank = 0;
+
 app.set('views', __dirname+ '/views');
-// make server object that contain port property and the value for our server.
-//app.engine('html', engine.mustache);
 app.engine('html', require('ejs').renderFile);
 app.set('view engine', 'html');
 app.use('/css', express.static(__dirname + '/node_modules/bootstrap/dist/css'));
@@ -26,6 +24,7 @@ app.use(bootstrapService.serve);
 
 data.run().then(() => {
     maxRank = data.fullUnitMap.get('100801').rankStatsMap.size;
+    console.log(data.UEMap);
 });
 
 app.listen(port, () => {

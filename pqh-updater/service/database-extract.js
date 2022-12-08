@@ -1,6 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 var Unit = require('../models/unit.model.js');
 var Equipment = require('../models/equipment.model.js');
+var UE = require('../models/ue.model.js');
 var unitArrayIds = new Array();
 var unitArrayNames = new Array();
 var mapUnitGear = new Map();
@@ -9,29 +10,21 @@ var fullUnitMap = new Map();
 var equipmentArray = new Array();
 var growthMap = new Map();
 var unitBondMap = new Map();
+var UEMap = new Map();
 
-
-
-
-
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve,ms));
-}
 function run() {
     return new Promise((resolve, reject) => {
         var db  = open_database();
         calc_values(db).then(() =>{
-            sleep(5000).then(()=> {
+            update_ue_scalling(db).then(()=>{
                 for(const [key, value] of fullUnitMap){
-                    fullUnitMap.get(key).pushGrowthStats(growthMap.get(key));
+                        fullUnitMap.get(key).pushGrowthStats(growthMap.get(key));
                 }
                 resolve();
             })
         });
     });
 }
-
-
 
 function calc_values(db){
     return new Promise((resolve, reject) => {
@@ -68,7 +61,24 @@ function calc_values(db){
         });
     });
 }
-
+function update_ue_scalling(db){
+    return new Promise((resolve, reject) => {
+        extract_ue_scalling(db).then((results) =>{
+            results.forEach(element =>{
+                let currentUe = UEMap.get(element.id);
+                /*this.enhancematk = 0;
+    this.enhancepatk = 0;
+    this.enhancemcrit = 0;
+    this.enhancepcrit = 0;*/
+                currentUe.enhancematk=element.matk;
+                currentUe.enhancepatk=element.patk;
+                currentUe.enhancemcrit=element.pcrit;
+                currentUe.enhancepcrit=element.pcrit;
+            })
+            resolve();
+        })
+    });
+}
 function build_arrays_and_map(db){
     return new Promise((resolve, reject) => {
         extract_character(db).then((results) => {
@@ -176,8 +186,17 @@ function build_arrays_and_map(db){
                     }
                     currentId = results[i].id;
                 }
-                resolve();
+                //resolve();
             })     
+        }).then(() =>{
+            extract_ue_data(db).then((results) =>{
+                results.forEach(element =>{
+                    let currentUE = new UE(element.id, element.matk, element.patk, element.mcrit, element.pcrit);
+                    UEMap.set(element.id, currentUE);
+                })
+               resolve();
+            })
+            //resolve();
         })
     });
 }
@@ -288,6 +307,38 @@ function build_unit_gear_map(db){
         });
     });
 }
+
+function extract_ue_data(db){
+    return new Promise((resolve, reject) => {
+        db.all(`select unique_equipment_data.equipment_id as id,
+            unique_equipment_data.atk as patk,
+            unique_equipment_data.magic_str as matk,
+            unique_equipment_data.physical_critical as pcrit,
+            unique_equipment_data.magic_critical as mcrit
+            from unique_equipment_data`, (err, row) => {
+            if (err) {
+                return console.error(err.message);
+            }
+            resolve(row);
+        });
+    });
+}
+
+function extract_ue_scalling(db){
+    return new Promise((resolve, reject) => {
+        db.all(`select unique_equipment_enhance_rate.equipment_id as id,
+            unique_equipment_enhance_rate.atk as patk,
+            unique_equipment_enhance_rate.magic_str as matk,
+            unique_equipment_enhance_rate.physical_critical as pcrit,
+            unique_equipment_enhance_rate.magic_critical as mcrit
+            from unique_equipment_enhance_rate`, (err, row) => {
+            if (err) {
+                return console.error(err.message);
+            }
+            resolve(row);
+        });
+    }); 
+}
 function open_database(){
     var db = new sqlite3.Database('./database/master_en.db', (err) => {
         if (err) {
@@ -304,6 +355,7 @@ module.exports = {
     mapUnitGear: mapUnitGear,
     fullUnitMap: fullUnitMap,
     equipmentArray: equipmentArray,
+    UEMap: UEMap,
     run
 }
 
