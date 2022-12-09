@@ -22,21 +22,32 @@ app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use(bootstrapService.serve);
 
+/*
 data.run().then(() => {
     maxRank = data.fullUnitMap.get('100801').rankStatsMap.size;
     console.log(data.UEMap);
-});
+});*/
+runServer();
+async function runServer(){
+    await data.run();
+    maxRank = data.fullUnitMap.get('100801').rankStatsMap.size;
+    console.log(data.fullUnitMap.get('106001'));
+    app.listen(port, () => {
+        console.log(`Server listen on port ${port}`);
+    });
+}
 
-app.listen(port, () => {
-    console.log(`Server listen on port ${port}`);
-
-});
 router.post('/api', (req, res) => {
     res.render('calculate.ejs',{value: req.body.unitId});
 });
 
 router.post('/unit_change', (req, res) => {
-    res.send(""+data.fullUnitMap.get(req.body.id).growthMap.size);
+    let ue = data.fullUnitMap.get(req.body.id).ueEquipment !== 'titouan';
+    let response = {
+        'size' : data.fullUnitMap.get(req.body.id).growthMap.size,
+        'ue' : ue
+    }
+    res.send(response);
 });
 
 router.post('/unit_id', (req, res) => {

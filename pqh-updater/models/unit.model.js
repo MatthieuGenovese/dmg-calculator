@@ -7,6 +7,7 @@ function Unit(id, name, matk, patk, mcrit, pcrit) {       // Accept name and age
     this.name = name;
     this.rankStatsMap = new Map();
     this.growthMap = new Map();
+    this.ueEquipment = 'titouan';
 }
 //atk puis matk
 Unit.prototype.pushGrowthStats = function(stats) {

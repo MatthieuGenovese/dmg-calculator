@@ -45,35 +45,42 @@
                 </div>
             </div>
             <div class="col-md-12">
-                <div class="form-check">
-                    <input class="gear form-check-input" type="checkbox" value="" id="gear6" hidden>
-                    <label class="gear gear6 form-check-label" id="gear6label" for="gear6" hidden>
-                      Default checkbox
-                    </label>
-                    <input class="gear form-check-input" type="checkbox" value="" id="gear1" hidden>
-                    <label class="gear gear1 form-check-label" id="gear1label" for="gear1" hidden>
-                      Default checkbox
-                    </label>
+                <div class ="col-md-4">
+                    <div class="form-check">
+                        <input class="gear form-check-input" type="checkbox" value="" id="gear6" hidden>
+                        <label class="gear gear6 form-check-label" id="gear6label" for="gear6" hidden>
+                        Default checkbox
+                        </label>
+                        <input class="gear form-check-input" type="checkbox" value="" id="gear1" hidden>
+                        <label class="gear gear1 form-check-label" id="gear1label" for="gear1" hidden>
+                        Default checkbox
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="gear form-check-input" type="checkbox" value="" id="gear5" hidden>
+                        <label class="gear gear5 form-check-label" id="gear5label" for="gear5" hidden>
+                        Default checkbox
+                        </label>
+                        <input class="gear form-check-input" type="checkbox" value="" id="gear2" hidden>
+                        <label class="gear gear2 form-check-label" id="gear2label" for="gear2" hidden>
+                        Default checkbox
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="gear form-check-input" type="checkbox" value="" id="gear4" hidden>
+                        <label class="gear gear4 form-check-label" id="gear4label" for="gear4" hidden>
+                        Default checkbox
+                        </label>
+                        <input class="gear form-check-input" type="checkbox" value="" id="gear3" hidden>
+                        <label class="gear gear3 form-check-label" id="gear3label" for="gear3" hidden>
+                        Default checkbox
+                        </label>                 
+                    </div>
                 </div>
-                <div class="form-check">
-                    <input class="gear form-check-input" type="checkbox" value="" id="gear5" hidden>
-                    <label class="gear gear5 form-check-label" id="gear5label" for="gear5" hidden>
-                      Default checkbox
-                    </label>
-                    <input class="gear form-check-input" type="checkbox" value="" id="gear2" hidden>
-                    <label class="gear gear2 form-check-label" id="gear2label" for="gear2" hidden>
-                      Default checkbox
-                    </label>
-                </div>
-                <div class="form-check">
-                    <input class="gear form-check-input" type="checkbox" value="" id="gear4" hidden>
-                    <label class="gear gear4 form-check-label" id="gear4label" for="gear4" hidden>
-                      Default checkbox
-                    </label>
-                    <input class="gear form-check-input" type="checkbox" value="" id="gear3" hidden>
-                    <label class="gear gear3 form-check-label" id="gear3label" for="gear3" hidden>
-                      Default checkbox
-                    </label>                 
+                <div class="col-md-4">
+                    <input class="ue form-check-input" type="checkbox" value="" id="ue" hidden>
+                    <label class="ue ue form-check-label" id="gear3label" for="ue" hidden>
+                    UE
                 </div>
             </div>
             <input id='btn' type='submit'>
@@ -92,12 +99,22 @@
                     'id' : document.getElementById('unitId').value              
                 },
             success: function(response){
+                let jsonResponse = jQuery.parseJSON(response);
+                
+                    console.log(jsonResponse.ue);
+                    console.log(jsonResponse.size);
                     let option6 = $('#star').children('option[value="6"]');
-                    if(option6.length === 1 && response === '5'){
+                    if(option6.length === 1 && jsonResponse.size === 5){
                         $('#star').children('option[value="6"]').remove();
                     }
-                    else if(option6.length === 0 && response === '6'){
+                    else if(option6.length === 0 && jsonResponse.size === 6){
                         $('#star').append('<option value="6"> 6 </option>');
+                    }
+                    if(jsonResponse.ue){
+                        $('.ue').removeAttr('hidden');
+                    }
+                    else{
+                        $('.ue').attr('hidden',true);
                     }
             }
         });
