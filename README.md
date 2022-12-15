@@ -1,2 +1,3 @@
 npm install
-node pqh-updater.js
+
+node app.js
